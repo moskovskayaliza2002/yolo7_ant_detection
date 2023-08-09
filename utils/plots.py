@@ -82,11 +82,11 @@ def plot_one_box(x, im, color=None, label=None, line_thickness=3, kpt_label=Fals
             cv2.putText(im, label, (c1[0], c1[1] - 2), 0, tl / 6, [225, 255, 255], thickness=tf//2, lineType=cv2.LINE_AA)
     if kpt_label:
         if len(kpts) == 4:
-            im = cv2.circle(im, (kpts[0], kpts[1]), 5, color, -1)
-            im = cv2.circle(im, (kpts[2], kpts[3]), 5, color, -1)
+            im = cv2.circle(im, (int(kpts[0]), int(kpts[1])), 5, color, -1)
+            im = cv2.circle(im, (int(kpts[2]), int(kpts[3])), 5, color, -1)
         elif len(kpts) == 6:
-            im = cv2.circle(im, (kpts[0], kpts[1]), 5, color, -1)
-            im = cv2.circle(im, (kpts[3], kpts[4]), 5, color, -1)
+            im = cv2.circle(im, (int(kpts[0]), int(kpts[1])), 5, color, -1)
+            im = cv2.circle(im, (int(kpts[3]), int(kpts[4])), 5, color, -1)
         # прорисовыввать "скелет" не нужно, поэтому просто заменяется на отрисовку точек. 
         # !!!!!!!!!!! Проблема: разный размер при тесте и при обучении! Подправила костылем !!!!!!!!!!!
         #plot_skeleton_kpts(im, kpts, steps, orig_shape=orig_shape)
