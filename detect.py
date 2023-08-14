@@ -8,6 +8,8 @@ import cv2
 import torch
 import torch.backends.cudnn as cudnn
 from numpy import random
+import yaml
+from collections import OrderedDict
 
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
@@ -18,15 +20,18 @@ from utils.torch_utils import select_device, load_classifier, time_synchronized
 
 
 def detect(opt):
-    source, weights, view_img, save_txt, imgsz, save_txt_tidl, kpt_label = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, opt.save_txt_tidl, opt.kpt_label
+    source, weights, view_img, save_txt, imgsz, save_txt_tidl, kpt_label, save_yaml = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, opt.save_txt_tidl, opt.kpt_label, opt.save_yaml
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
 
     # Directories
     save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)  # increment run
-    (save_dir / 'labels' if (save_txt or save_txt_tidl) else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
-
+    (save_dir / 'labels' if (save_txt or save_txt_tidl or save_yaml) else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    
+    print(f"SAVE PATH {save_dir}")
+    yml_data = []
+    
     # Initialize
     set_logging()
     device = select_device(opt.device)
@@ -70,13 +75,17 @@ def detect(opt):
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
         if img.ndimension() == 3:
             img = img.unsqueeze(0)
-
+        
+        if save_yaml:
+            FPS = vid_cap.get(cv2.CAP_PROP_FPS)
+            weight = vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height = vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            name = source
         # Inference
         t1 = time_synchronized()
         pred = model(img, augment=opt.augment)[0]
-        print(pred[...,4].max())
         # Apply NMS
-        pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms, kpt_label=kpt_label)
+        pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms, kpt_label=kpt_label, nc=1, nkpt=2)
         t2 = time_synchronized()
 
         # Apply Classifier
@@ -85,6 +94,7 @@ def detect(opt):
 
         # Process detections
         for i, det in enumerate(pred):  # detections per image
+            frame = 1
             if webcam:  # batch_size >= 1
                 p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
             else:
@@ -92,6 +102,9 @@ def detect(opt):
 
             p = Path(p)  # to Path
             save_path = str(save_dir / p.name)  # img.jpg
+            if dataset.mode == 'video':
+                filename = source[source.rfind('/'):source.rfind('.')]
+                yml_filename = '/home/ubuntu/yolo7/yolov7/' + str(save_dir) + '/labels' + filename
             txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
             s += '%gx%g ' % img.shape[2:]  # print string
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
@@ -106,6 +119,11 @@ def detect(opt):
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
                 # Write results
+                if save_yaml:
+                    bboxes = []
+                    bboxes_scores = []
+                    pred_kp = []
+                    
                 for det_index, (*xyxy, conf, cls) in enumerate(reversed(det[:,:6])):
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -120,6 +138,17 @@ def detect(opt):
                         plot_one_box(xyxy, im0, label=label, color=colors(c, True), line_thickness=opt.line_thickness, kpt_label=kpt_label, kpts=kpts, steps=3, orig_shape=im0.shape[:2])
                         if opt.save_crop:
                             save_one_box(xyxy, im0s, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+                    if save_yaml:
+                        #xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                        xywh = torch.tensor(xyxy).view(1, 4)
+                        bboxes.append([int(xywh[0,0]), int(xywh[0,1]), int(xywh[0,0] + xywh[0,2]), int(xywh[0,1] + xywh[0,3])])
+                        bboxes_scores.append(conf.item())
+                        kpts = det[det_index, 6:].tolist()
+                        pred_kp.append([[int(kpts[0]), int(kpts[1])],[int(kpts[3]), int(kpts[4])]])
+                
+                if save_yaml:
+                    yml_data.append(OrderedDict({'frame': frame, 'bboxes': bboxes, 'bboxes_scores': bboxes_scores, 'keypoints': pred_kp}))
+                    frame += 1
 
 
                 if save_txt_tidl:  # Write to file in tidl dump format
@@ -128,7 +157,15 @@ def detect(opt):
                         line = (conf, cls,  *xyxy) if opt.save_conf else (cls, *xyxy)  # label format
                         with open(txt_path + '.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
-
+            if save_yaml:
+                with open(yml_filename + '.yml', 'w') as f:
+                    yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping('tag:yaml.org,2002:map', data.items()))
+                    yaml.dump(OrderedDict({'name': name, 'FPS': FPS, 'weight': weight, 'height': height}), f)
+                with open(yml_filename + '.yml', 'a') as f:
+                    yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping('tag:yaml.org,2002:map', data.items()))
+                    data = OrderedDict({'frames': yml_data})
+                    yaml.dump(data, f)
+                    
             # Print time (inference + NMS)
             print(f'{s}Done. ({t2 - t1:.3f}s)')
 
@@ -189,6 +226,7 @@ if __name__ == '__main__':
     parser.add_argument('--hide-labels', default=False, action='store_true', help='hide labels')
     parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
     parser.add_argument('--kpt-label', action='store_true', help='use keypoint labels')
+    parser.add_argument('--save-yaml', action='store_true', help='use keypoint labels')
     opt = parser.parse_args()
     print(opt)
     check_requirements(exclude=('tensorboard', 'pycocotools', 'thop'))
