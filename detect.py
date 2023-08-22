@@ -28,9 +28,13 @@ def write_file_info(name, fps, weight, height, path):
              
 def write_txt(frame, bbox, bbox_scores, kps, path):
     with open(path, 'a') as f:
-        b = ' '.join(str(i) for i in bbox)
-        k = ' '.join(str(i) for i in kps)
-        s = str(frame) + ' ' + b + ' ' + str(bbox_scores) + ' ' + k + '\n'
+        s = ''
+        if len(bbox):
+            b = ' '.join(str(i) for i in bbox)
+            k = ' '.join(str(i) for i in kps)
+            s = str(frame) + ' ' + b + ' ' + str(bbox_scores) + ' ' + k + '\n'
+        else:
+            s = str(frame) + '\n'
         f.write(s)
         
         
@@ -127,7 +131,9 @@ def detect(opt):
             #txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
             s += '%gx%g ' % img.shape[2:]  # print string
             #gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-            if len(det):
+            if not len(det) and save_txt:
+                write_txt(frame_count, [], [], [], txt_path)
+            else:
                 # Rescale boxes from img_size to im0 size
                 scale_coords(img.shape[2:], det[:, :4], im0.shape, kpt_label=False)
                 scale_coords(img.shape[2:], det[:, 6:], im0.shape, kpt_label=kpt_label, step=3)
@@ -150,7 +156,8 @@ def detect(opt):
                     '''
                     if save_txt:  # Write to file
                         xywh = torch.tensor(xyxy).view(1, 4)
-                        bbox = [int(xywh[0,0]), int(xywh[0,1]), int(xywh[0,0] + xywh[0,2]), int(xywh[0,1] + xywh[0,3])]
+                        bbox = [int(xywh[0,0]), int(xywh[0,1]), int(xywh[0,2]), int(xywh[0,3])]
+                        #bbox = [int(xywh[0,0]), int(xywh[0,1]), int(xywh[0,0] + xywh[0,2]), int(xywh[0,1] + xywh[0,3])]
                         bs = conf.item()
                         kpts = det[det_index, 6:].tolist()
                         pred_kp = [int(kpts[0]), int(kpts[1]), int(kpts[3]), int(kpts[4])]
@@ -184,6 +191,7 @@ def detect(opt):
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
                 else:  # 'video' or 'stream'
+                    save_path += '_pred' 
                     if vid_path != save_path:  # new video
                         vid_path = save_path
                         if isinstance(vid_writer, cv2.VideoWriter):
