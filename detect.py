@@ -93,6 +93,8 @@ def detect(opt):
         weight = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         write_file_info(source, FPS, weight, height, txt_path)
+    else:
+        txt_path = ''
     
     # Run inference
     if device.type != 'cpu':
@@ -128,7 +130,8 @@ def detect(opt):
 
             p = Path(p)  # to Path
             save_path = str(save_dir / p.name)  # img.jpg
-            #txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
+            if not txt_path:
+                txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
             s += '%gx%g ' % img.shape[2:]  # print string
             #gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             if not len(det) and save_txt:
@@ -159,15 +162,16 @@ def detect(opt):
                         bbox = [int(xywh[0,0]), int(xywh[0,1]), int(xywh[0,2]), int(xywh[0,3])]
                         #bbox = [int(xywh[0,0]), int(xywh[0,1]), int(xywh[0,0] + xywh[0,2]), int(xywh[0,1] + xywh[0,3])]
                         bs = conf.item()
-                        kpts = det[det_index, 6:].tolist()
+                        kpts = det[len(det) - 1 - det_index, 6:].tolist()
                         pred_kp = [int(kpts[0]), int(kpts[1]), int(kpts[3]), int(kpts[4])]
                         write_txt(frame_count, bbox, bs, pred_kp, txt_path)
 
                     if save_img or opt.save_crop or view_img:  # Add bbox to image
                         c = int(cls)  # integer class
                         label = None if opt.hide_labels else (names[c] if opt.hide_conf else f'{names[c]} {conf:.2f}')
-                        kpts = det[det_index, 6:]
-                        plot_one_box(xyxy, im0, label=label, color=colors(c, True), line_thickness=opt.line_thickness, kpt_label=kpt_label, kpts=kpts, steps=3, orig_shape=im0.shape[:2])
+                        #kpts = det[det_index, 6:]
+                        kpts = det[len(det) - 1 - det_index, 6:].tolist()
+                        im0 = plot_one_box(xyxy, im0, label=label, color=colors(c, True), line_thickness=opt.line_thickness, kpt_label=kpt_label, kpts=kpts, steps=3, orig_shape=im0.shape[:2])
                         if opt.save_crop:
                             save_one_box(xyxy, im0s, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 

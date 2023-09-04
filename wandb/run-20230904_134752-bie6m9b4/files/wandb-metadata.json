@@ -1,0 +1,91 @@
+{
+    "os": "Linux-5.4.0-159-generic-x86_64-with-glibc2.29",
+    "python": "3.8.10",
+    "heartbeatAt": "2023-09-04T10:47:53.683322",
+    "startedAt": "2023-09-04T10:47:52.097281",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--weights",
+        "models/weights/yolov7-w6-pose.pt",
+        "--data",
+        "data/custom_kpts.yaml",
+        "--cfg",
+        "cfg/yolov7-w6-pose_custom.yaml",
+        "--hyp",
+        "data/hyp.pose.yaml",
+        "--device",
+        "0",
+        "--kpt-label",
+        "--epochs",
+        "300",
+        "--batch-size",
+        "8"
+    ],
+    "state": "running",
+    "program": "train.py",
+    "codePath": "train.py",
+    "git": {
+        "remote": "https://github.com/moskovskayaliza2002/yolo7_ant_detection",
+        "commit": "7f6dc6c96e67b9e94eb13316e05d7cb0357f8793"
+    },
+    "email": "moscovskayaliza@gmail.com",
+    "root": "/home/ubuntu/yolo7/yolov7",
+    "host": "student-251",
+    "username": "ubuntu",
+    "executable": "/usr/bin/python3",
+    "cpu_count": 6,
+    "cpu_count_logical": 6,
+    "cpu_freq": {
+        "current": 3738.2345000000005,
+        "min": 800.0,
+        "max": 4100.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3790.439,
+            "min": 800.0,
+            "max": 4100.0
+        },
+        {
+            "current": 3583.095,
+            "min": 800.0,
+            "max": 4100.0
+        },
+        {
+            "current": 3743.766,
+            "min": 800.0,
+            "max": 4100.0
+        },
+        {
+            "current": 3777.772,
+            "min": 800.0,
+            "max": 4100.0
+        },
+        {
+            "current": 3794.613,
+            "min": 800.0,
+            "max": 4100.0
+        },
+        {
+            "current": 3739.722,
+            "min": 800.0,
+            "max": 4100.0
+        }
+    ],
+    "disk": {
+        "total": 95.1055679321289,
+        "used": 75.68469619750977
+    },
+    "gpu": "NVIDIA GeForce RTX 2060 SUPER",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 2060 SUPER",
+            "memory_total": 8589934592
+        }
+    ],
+    "memory": {
+        "total": 15.56890869140625
+    }
+}

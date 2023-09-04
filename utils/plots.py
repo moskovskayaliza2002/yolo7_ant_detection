@@ -67,6 +67,7 @@ def butter_lowpass_filtfilt(data, cutoff=1500, fs=50000, order=5):
 
 def plot_one_box(x, im, color=None, label=None, line_thickness=3, kpt_label=False, kpts=None, steps=2, orig_shape=None):
     # Plots one bounding box on image 'im' using OpenCV
+    im = im
     assert im.data.contiguous, 'Image not contiguous. Apply np.ascontiguousarray(im) to plot_on_box() input image.'
     tl = line_thickness or round(0.002 * (im.shape[0] + im.shape[1]) / 2) + 1  # line/font thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
@@ -81,12 +82,24 @@ def plot_one_box(x, im, color=None, label=None, line_thickness=3, kpt_label=Fals
             cv2.rectangle(im, c1, c2, color, -1, cv2.LINE_AA)  # filled
             cv2.putText(im, label, (c1[0], c1[1] - 2), 0, tl / 6, [225, 255, 255], thickness=tf//2, lineType=cv2.LINE_AA)
     if kpt_label:
+        overlay = im.copy()
+        a, h = (0,0), (0,0)
         if len(kpts) == 4:
-            im = cv2.circle(im, (int(kpts[0]), int(kpts[1])), 5, color, -1)
-            im = cv2.circle(im, (int(kpts[2]), int(kpts[3])), 5, color, -1)
+            a = (int(kpts[0]), int(kpts[1]))
+            h = (int(kpts[2]), int(kpts[3]))
+            overlay = cv2.circle(overlay, a, 5, color, -1)
+            overlay = cv2.circle(overlay, h, 5, color, -1)
         elif len(kpts) == 6:
-            im = cv2.circle(im, (int(kpts[0]), int(kpts[1])), 5, color, -1)
-            im = cv2.circle(im, (int(kpts[3]), int(kpts[4])), 5, color, -1)
+            a = (int(kpts[0]), int(kpts[1]))
+            h = (int(kpts[3]), int(kpts[4]))
+            overlay = cv2.circle(overlay, a, 5, color, -1)
+            overlay = cv2.circle(overlay, h, 5, color, -1)
+        alpha = 0.5
+        im = cv2.addWeighted(overlay, alpha, im, 1 - alpha, 0)
+        im = cv2.putText(im.copy(), " A", a, cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+        im = cv2.putText(im.copy(), " H", h, cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+        #im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+    return im
         # прорисовыввать "скелет" не нужно, поэтому просто заменяется на отрисовку точек. 
         # !!!!!!!!!!! Проблема: разный размер при тесте и при обучении! Подправила костылем !!!!!!!!!!!
         #plot_skeleton_kpts(im, kpts, steps, orig_shape=orig_shape)

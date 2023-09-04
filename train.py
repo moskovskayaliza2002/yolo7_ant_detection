@@ -114,6 +114,7 @@ def train(hyp, opt, device, tb_writer=None):
     # Optimizer
     nbs = 64  # nominal batch size
     accumulate = max(round(nbs / total_batch_size), 1)  # accumulate loss before optimizing
+    print(f"NUM OF ACCUMULATION STEPS {accumulate}")
     hyp['weight_decay'] *= total_batch_size * accumulate / nbs  # scale weight_decay
     logger.info(f"Scaled weight_decay = {hyp['weight_decay']}")
 
@@ -330,7 +331,7 @@ def train(hyp, opt, device, tb_writer=None):
             scaler.scale(loss).backward()
 
             # Optimize
-            if ni % accumulate == 0:
+            if ni % accumulate == 0: 
                 scaler.step(optimizer)  # optimizer.step
                 scaler.update()
                 optimizer.zero_grad()
