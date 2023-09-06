@@ -101,6 +101,7 @@ def detect(opt):
         model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
     t0 = time.time()
     frame_count = 0
+    im_count = 0
     for path, img, im0s, vid_cap in dataset:
         tstart_i = time.time()
         img = torch.from_numpy(img).to(device)
@@ -124,18 +125,26 @@ def detect(opt):
         # Process detections
         for i, det in enumerate(pred):  # detections per image
             if webcam:  # batch_size >= 1
-                p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
+                p, s, im0,  = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
             else:
                 p, s, im0, frame = path, '', im0s.copy(), getattr(dataset, 'frame', 0)
 
             p = Path(p)  # to Path
+            if dataset.mode == 'image':
+                s = str(p)
+                im_count = int(s[s.rfind('/')+1:][:-4])
+                
+            print(f'--------------ПУТЬ {p}')
             save_path = str(save_dir / p.name)  # img.jpg
             if not txt_path:
                 txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
             s += '%gx%g ' % img.shape[2:]  # print string
             #gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             if not len(det) and save_txt:
-                write_txt(frame_count, [], [], [], txt_path)
+                if dataset.mode == 'image':
+                    write_txt(im_count, [], [], [], txt_path)
+                else:
+                    write_txt(frame_count, [], [], [], txt_path)
             else:
                 # Rescale boxes from img_size to im0 size
                 scale_coords(img.shape[2:], det[:, :4], im0.shape, kpt_label=False)
@@ -164,7 +173,11 @@ def detect(opt):
                         bs = conf.item()
                         kpts = det[len(det) - 1 - det_index, 6:].tolist()
                         pred_kp = [int(kpts[0]), int(kpts[1]), int(kpts[3]), int(kpts[4])]
-                        write_txt(frame_count, bbox, bs, pred_kp, txt_path)
+                        if dataset.mode == 'image':
+                            write_txt(im_count, bbox, bs, pred_kp, txt_path)
+                        else:
+                            write_txt(frame_count, bbox, bs, pred_kp, txt_path)
+                        #write_txt(frame_count, bbox, bs, pred_kp, txt_path)
 
                     if save_img or opt.save_crop or view_img:  # Add bbox to image
                         c = int(cls)  # integer class
